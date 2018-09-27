@@ -1,6 +1,7 @@
 final class Particle
 {
   public PVector position, velocity;
+  public boolean visible;
   private PVector forceAccumulator;
   private static final float DAMPING = .995f;
   private float invMass;
@@ -16,6 +17,7 @@ final class Particle
     velocity = new PVector(xVel, yVel);
     forceAccumulator = new PVector(0, 0);
     invMass = invM;
+    this.visible = true;
   }
   
   void addForce(PVector force)
