@@ -8,21 +8,23 @@ final int OBSTACLE_HEIGHT_PROPORTION = 10;
 final int PLAYER_INIT_X_PROPORTION = 10;
 final int PLAYER_INCREMENT_PROPORTION = 100;
 final int PROJECTILE_RADIUS_PROPORTION = 50;
+final int SCORE_LIMIT = 3;
 
 Player player1, player2;
 Particle projectile;
 Particle[][] obstacles = new Particle[6][7];
-int xStart, yStart, xEnd, yEnd, lim[], obstacleWidth, obstacleHeight;
+int xStart, yStart, xEnd, yEnd, lim[], obstacleWidth, obstacleHeight, score1 = 0, score2 = 0, playerWidth, playerHeight;
+int s1, s2, direction, strength;
 UserForce userForce, wind;
 Gravity gravity;
 ForceRegistry forceRegistry;
-boolean movingLeft = false, movingRight = false, turn = true;
+boolean movingLeft = false, movingRight = false, turn = true, lock = false;
 
 void setup()
 {
   fullScreen();
-  int playerWidth = displayWidth/PLAYER_WIDTH_PROPORTION;
-  int playerHeight = displayHeight/PLAYER_HEIGHT_PROPORTION;
+  playerWidth = displayWidth/PLAYER_WIDTH_PROPORTION;
+  playerHeight = displayHeight/PLAYER_HEIGHT_PROPORTION;
   int playerInitX = displayWidth/PLAYER_INIT_X_PROPORTION - playerWidth/2;
   int playerInitY = displayHeight - playerHeight;
   int playerIncrement = displayWidth/PLAYER_INCREMENT_PROPORTION;
@@ -47,13 +49,36 @@ void setup()
       obstacles[i][j] = new Particle(x, y, 0f, 0f, 0.02f);
     }
   }
-  //forceRegistry.add(projectile, gravity);
-  //forceRegistry.add(projectile, userForce);
+  direction = (int)random(2);
+  if(direction == 0)
+  {
+    strength = (int)random(11);
+    wind = new UserForce(new PVector((-1)*strength, 0f));
+  }
+  if(direction == 1)
+  {
+    strength = (int)random(11);
+    wind = new UserForce(new PVector(strength, 0f));
+  }
 }
 
 void draw()
 {
   background(211, 211, 211);
+  textSize(14);
+  text("P1 Score = " + score1, 12, 60);
+  text("P2 Score = " + score2, 1800, 60);
+  textSize(30);
+  if(turn)
+    text("Player 1's Turn", 900, 60);
+  else
+    text("Player 2's Turn", 900, 60);
+  textSize(24);
+  if(direction == 0)
+    text("Wind direction: Left", 900, 90);
+  else
+    text("Wind direction: Right", 900, 80);
+  text("Wind strength = " + strength + "/10", 900, 110);
   if(movingLeft)
     if(turn)
       player1.moveLeft(obstacles, lim, 6, obstacleWidth, obstacleHeight);
@@ -83,6 +108,17 @@ void draw()
         projectile.visible = false;
       }
     }
+  s2 = second();
+  if(projectile.visible && (s2 - s1 >= 2) && collisionRectEllipse(player1.getX(), player1.getY(), playerWidth, playerHeight, (int)projectile.position.x, (int)projectile.position.y, radius, radius))
+  {
+    projectile.visible = false;
+    ++score2;
+  }
+  if(projectile.visible && (s2 - s1 >= 2) && collisionRectEllipse(player2.getX(), player2.getY(), playerWidth, playerHeight, (int)projectile.position.x, (int)projectile.position.y, radius, radius)) 
+  {
+    projectile.visible = false;
+    ++score1;
+  }
   fill(255);
   if(projectile.visible)
     ellipse(position.x, position.y, radius, radius);
@@ -91,6 +127,22 @@ void draw()
     for(int j = 0; j < lim[i]; ++j)
       if(obstacles[i][j].visible)
         rect(obstacles[i][j].position.x, obstacles[i][j].position.y, obstacleWidth, obstacleHeight);
+  if(!projectile.visible && lock)
+  {
+    direction = (int)random(2);
+    if(direction == 0)
+    {
+      strength = (int)random(11);
+      wind = new UserForce(new PVector((-1)*strength, 0f));
+    }
+    if(direction == 1)
+    {
+      strength = (int)random(11);
+      wind = new UserForce(new PVector(strength, 0f));
+    }    
+  }
+  if(!projectile.visible)
+    lock = false;
   userForce.set(0f, 0f);
 }
 
@@ -124,24 +176,31 @@ void keyReleased()
 
 void mousePressed()
 {
-  if(turn)
+  if(!lock)
   {
-    xStart = player1.getX();
-    yStart = player1.getY();
-    projectile = new Particle(xStart, yStart, 0f, 0f, 0.015f);
+    if(turn)
+    {
+      xStart = player1.getX();
+      yStart = player1.getY();
+      projectile = new Particle(xStart, yStart, 0f, 0f, 0.015f);
+      s1 = second();
+    }
+    else
+    {
+      xStart = player2.getX();
+      yStart = player2.getY();
+      projectile = new Particle(xStart, yStart, 0f, 0f, 0.015f);
+      s1 = second();
+    }
+    xEnd = mouseX;
+    yEnd = mouseY;
+    userForce.set(xEnd - xStart, yEnd - yStart);
+    forceRegistry.add(projectile, gravity);
+    forceRegistry.add(projectile, userForce);
+    forceRegistry.add(projectile, wind);
+    lock = true;
+    turn = !turn;
   }
-  else
-  {
-    xStart = player2.getX();
-    yStart = player2.getY();
-    projectile = new Particle(xStart, yStart, 0f, 0f, 0.015f);
-  }
-  xEnd = mouseX;
-  yEnd = mouseY;
-  userForce.set(xEnd - xStart, yEnd - yStart);
-  forceRegistry.add(projectile, gravity);
-  forceRegistry.add(projectile, userForce);
-  turn = !turn;
 }
 
 boolean collisionRectRect(int x1, int y1, int w1, int h1, int x2, int y2, int h2, int w2)
