@@ -18,7 +18,7 @@ int s1, s2, direction, strength;
 UserForce userForce, wind;
 Gravity gravity;
 ForceRegistry forceRegistry;
-boolean movingLeft = false, movingRight = false, turn = true, lock = false;
+boolean movingLeft = false, movingRight = false, turn = true, lock = false, loop = true;
 
 void setup()
 {
@@ -28,6 +28,8 @@ void setup()
   int playerInitX = displayWidth/PLAYER_INIT_X_PROPORTION - playerWidth/2;
   int playerInitY = displayHeight - playerHeight;
   int playerIncrement = displayWidth/PLAYER_INCREMENT_PROPORTION;
+  score1 = score2 = 0;
+  turn = true;
   lim = new int[6];
   obstacleWidth = displayWidth/OBSTACLE_WIDTH_PROPORTION;
   obstacleHeight = displayHeight/OBSTACLE_HEIGHT_PROPORTION;
@@ -47,6 +49,7 @@ void setup()
     {
       int y = displayHeight-j*obstacleHeight;
       obstacles[i][j] = new Particle(x, y, 0f, 0f, 0.02f);
+      //forceRegistry.add(obstacles[i][j], gravity);
     }
   }
   direction = (int)random(2);
@@ -113,11 +116,25 @@ void draw()
   {
     projectile.visible = false;
     ++score2;
+    if(score2 == SCORE_LIMIT)
+    {
+      textSize(50);
+      text("Player 2 wins", 500, 540);
+      noLoop();
+      setup();
+    }
   }
   if(projectile.visible && (s2 - s1 >= 2) && collisionRectEllipse(player2.getX(), player2.getY(), playerWidth, playerHeight, (int)projectile.position.x, (int)projectile.position.y, radius, radius)) 
   {
     projectile.visible = false;
     ++score1;
+    if(score1 == SCORE_LIMIT)
+    {
+      textSize(200);
+      text("Player 1 wins", 500, 540);
+      noLoop();
+      setup();
+    }
   }
   fill(255);
   if(projectile.visible)
@@ -126,7 +143,10 @@ void draw()
   for(int i = 0; i < 6; ++i)
     for(int j = 0; j < lim[i]; ++j)
       if(obstacles[i][j].visible)
+      {
+        //obstacles[i][j].integrate();
         rect(obstacles[i][j].position.x, obstacles[i][j].position.y, obstacleWidth, obstacleHeight);
+      }
   if(!projectile.visible && lock)
   {
     direction = (int)random(2);
@@ -176,6 +196,11 @@ void keyReleased()
 
 void mousePressed()
 {
+  if(!looping)
+  {
+    loop();
+    return;
+  }
   if(!lock)
   {
     if(turn)

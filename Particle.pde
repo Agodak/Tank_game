@@ -34,6 +34,8 @@ final class Particle
     resultingAcceleration.mult(invMass);
     velocity.add(resultingAcceleration);
     velocity.mult(DAMPING);
+    //if ((position.x < 0) || (position.x > width)) velocity.x = -velocity.x;
+    //if ((position.y < 0) || (position.y > height)) velocity.y = -velocity.y;
     forceAccumulator.x = 0;
     forceAccumulator.y = 0;
   }
