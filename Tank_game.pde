@@ -14,11 +14,11 @@ Player player1, player2;
 Particle projectile;
 Particle[][] obstacles = new Particle[6][7];
 int xStart, yStart, xEnd, yEnd, lim[], obstacleWidth, obstacleHeight, score1 = 0, score2 = 0, playerWidth, playerHeight;
-int s1, s2, direction, strength;
+int s1, s2, direction, strength, aiX, aiY;
 UserForce userForce, wind;
 Gravity gravity;
 ForceRegistry forceRegistry;
-boolean movingLeft = false, movingRight = false, turn = true, lock = false, loop = true;
+boolean movingLeft = false, movingRight = false, turn = true, lock = false, loop = true, ai = true;
 
 void setup()
 {
@@ -63,6 +63,8 @@ void setup()
     strength = (int)random(11);
     wind = new UserForce(new PVector(strength, 0f));
   }
+  aiX = (int)random(displayWidth);
+  aiY = (int)random(displayHeight);  
 }
 
 void draw()
@@ -86,20 +88,33 @@ void draw()
     if(turn)
       player1.moveLeft(obstacles, lim, 6, obstacleWidth, obstacleHeight);
     else
-      player2.moveLeft(obstacles, lim, 6, obstacleWidth, obstacleHeight);
+    {
+      if(!ai)
+        player2.moveLeft(obstacles, lim, 6, obstacleWidth, obstacleHeight);
+    }
   else
     if(movingRight)
       if(turn)
         player1.moveRight(obstacles, lim, 6, obstacleWidth, obstacleHeight);
       else
-        player2.moveRight(obstacles, lim, 6, obstacleWidth, obstacleHeight);
+      {
+        if(!ai)
+          player2.moveRight(obstacles, lim, 6, obstacleWidth, obstacleHeight);
+      }
   player1.draw();
   player2.draw();
   forceRegistry.updateForces();
   projectile.integrate();
   PVector position = projectile.position;
+  PVector lastShot = new PVector(0f, 0f), lastEnemyShot = new PVector(0f, 0f);
   if(position.x < 0 || position.x > displayWidth || position.y > displayHeight)
+  {
+    if(!turn)
+      lastEnemyShot = position;
+    else
+      lastShot = position;
     projectile.visible = false;
+  }
   int radius = displayWidth/PROJECTILE_RADIUS_PROPORTION;
   for(int i = 0; i < 6; ++i)
     for(int j = 0; j < lim[i]; ++j)
@@ -108,24 +123,35 @@ void draw()
       if(p.visible && projectile.visible && collisionRectEllipse((int)p.position.x, (int)p.position.y, obstacleWidth, obstacleHeight, (int)projectile.position.x, (int)projectile.position.y, radius, radius))
       {
         p.visible = false;
+        if(!turn)
+          lastEnemyShot = position;
+        else
+          lastShot = position;
         projectile.visible = false;
       }
     }
   s2 = second();
   if(projectile.visible && (s2 - s1 >= 2) && collisionRectEllipse(player1.getX(), player1.getY(), playerWidth, playerHeight, (int)projectile.position.x, (int)projectile.position.y, radius, radius))
   {
+    if(!turn)
+      lastEnemyShot = position;
+    else
+      lastShot = position;    
     projectile.visible = false;
     ++score2;
     if(score2 == SCORE_LIMIT)
     {
-      textSize(50);
+      textSize(200);
       text("Player 2 wins", 500, 540);
       noLoop();
-      setup();
     }
   }
   if(projectile.visible && (s2 - s1 >= 2) && collisionRectEllipse(player2.getX(), player2.getY(), playerWidth, playerHeight, (int)projectile.position.x, (int)projectile.position.y, radius, radius)) 
   {
+    if(!turn)
+      lastEnemyShot = position;
+    else
+      lastShot = position;    
     projectile.visible = false;
     ++score1;
     if(score1 == SCORE_LIMIT)
@@ -133,7 +159,6 @@ void draw()
       textSize(200);
       text("Player 1 wins", 500, 540);
       noLoop();
-      setup();
     }
   }
   fill(255);
@@ -162,13 +187,35 @@ void draw()
     }    
   }
   if(!projectile.visible)
-    lock = false;
+      lock = false;
   userForce.set(0f, 0f);
+  if(ai && !turn && !lock)
+  {
+    xStart = player2.getX();
+    yStart = player2.getY();
+    projectile = new Particle(xStart, yStart, 0f, 0f, 0.015f);
+    s1 = second();
+    int windAdjustment;
+    if(direction == 0)
+      windAdjustment = 10;
+    else
+      windAdjustment = -10;
+    aiX += (player1.getX() - lastShot.x);// - windAdjustment*strength;
+    //aiY -= (player1.getX() - lastShot.x); //+ windAdjustment*strength;
+    xEnd = aiX;
+    yEnd = aiY;
+    userForce.set(xEnd - xStart, yEnd - yStart);
+    forceRegistry.add(projectile, gravity);
+    forceRegistry.add(projectile, userForce);
+    forceRegistry.add(projectile, wind);
+    turn = !turn;
+    lock = true;
+  }
 }
 
 void keyPressed()
 {
-  if(key == CODED)
+  if(key == CODED && !lock)
     switch(keyCode)
     {
       case LEFT:
@@ -182,7 +229,7 @@ void keyPressed()
 
 void keyReleased()
 {
-  if(key == CODED);
+  if(key == CODED && !lock);
     switch(keyCode)
     {
       case LEFT:
@@ -198,10 +245,11 @@ void mousePressed()
 {
   if(!looping)
   {
+    setup();    
     loop();
     return;
   }
-  if(!lock)
+  if(!lock && (!ai || (ai && turn)))
   {
     if(turn)
     {
@@ -223,8 +271,8 @@ void mousePressed()
     forceRegistry.add(projectile, gravity);
     forceRegistry.add(projectile, userForce);
     forceRegistry.add(projectile, wind);
-    lock = true;
     turn = !turn;
+    lock = true;
   }
 }
 

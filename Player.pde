@@ -58,7 +58,7 @@ final class Player
       }
     if(b)
       position.x += moveIncrement;
-    if(position.x > displayWidth)
+    if(position.x > displayWidth - playerWidth)
       position.x = displayWidth - playerWidth;
   }
   
